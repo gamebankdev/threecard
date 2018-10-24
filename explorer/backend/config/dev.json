@@ -1,0 +1,14 @@
+{
+    "Config": {
+      "gamebank": {
+        "server": "http://192.168.1.126:8091",
+        "address_prefix": "TST",
+        "chain_id": "18dcf0a285365fc58b71f18b3d3fec954aa0c141c44e4e5cb4cf777b9eab274e"
+      },
+      "initAcoount":{
+        "wif":"5Ji7UEezmgwemV6GUy2JA4TkMKdACxCQk8j2z9DUVrZA5vAuLA2",
+        "initName":"initminer",
+        "fee":"10000.000 GB"
+      }
+    }
+}
