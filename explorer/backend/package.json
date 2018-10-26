@@ -10,7 +10,9 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.18.0",
+    "co": "^4.6.0",
     "config": "^2.0.1",
-    "gamebank": "^0.1.5"
+    "gamebank": "^0.1.5",
+    "mongodb": "^3.1.8"
   }
 }
