@@ -1,12 +1,14 @@
 import { publicKeyTweakMul, privateKeyModInverse } from "secp256k1";
 import bs58 from "bs58";
+
 $(document).ready(function() {
   var params = formatUrlParams();
-  $(".navbar-brand").text(`您正在查看${params.id}号牌桌`);
+  var cards=[]
+  $(".navbar-brand").text(`${params.id}号的牌桌区块链日志`);
   getData(params.id);
   function getData(id) {
     var htmlArray, shuffer_cards, game_result;
-    getRequest(`contractlog/findbycol/threecard013/col2/${id}/0`).then(res => {
+    getRequest(`contractlog/findbycol/threecard025/col2/${id}/0`).then(res => {
       htmlArray = res.map(function(item, index) {
         switch (item.key) {
           case "table_create":
@@ -17,13 +19,16 @@ $(document).ready(function() {
             return null;
           case "shuffer_cards":
             shuffer_cards = item.col3;
-            var extra = JSON.parse(shuffer_cards).map((ele, key) => {
+            var extra = shuffer_cards.map((ele, key) => {
+              cards.push(ele)
               return `<span>${key + 1}:    ${ele}</span> </br>`;
             });
+            extra.unshift(`<p>玩家轮流洗牌并加密,得到52张加密牌数据(PS:洗牌加密过程均在玩家本地完成,每张牌都需要N把密钥才能解开,各玩家各持一个,因此任何玩家都无法单独解开,包括服务器)</p>`)
             return createHtml(
-              ` <div class="alert alert-secondary" style="background-color: rgba(244, 216, 216, 1);cursor: pointer; border:0"  role="alert">${
-                item.col1
-              }洗牌</div>`,
+              ` <div class="alert alert-secondary" style="background-color: rgba(244, 216, 216, 1);cursor: pointer; border:0;position:relative"  role="alert">
+                <img style="position:absolute;right:10px;width:30px;height:30px;" src="./assets/other/open.png"> 
+                玩家轮流洗牌并加密
+              </div>`,
               extra.join(""),
               index
             );
@@ -31,12 +36,12 @@ $(document).ready(function() {
             game_result = item.col3;
             return formatGameResult(item.col3);
         }
-      });      
+      });
       $("#accordion").html(htmlArray.join(""));
       Decrypt(shuffer_cards, game_result);
     });
   }
-  function createHtml(element, extra,id) {
+  function createHtml(element, extra, id) {
     return `
       <div >
         <div id="heading${id}">
@@ -53,7 +58,7 @@ $(document).ready(function() {
     `;
   }
   function formatGameResult(gameResult) {
-    var result = JSON.parse(gameResult);
+    var result = gameResult;
     var resultHtml = result.map((element, index) => {
       switch (element.type) {
         case "ready":
@@ -64,42 +69,61 @@ $(document).ready(function() {
         case "draw":
           const args = JSON.parse(element.args);
           const sendCard = args.map(item => item + 1);
-          return ` <div class="alert alert alert-info" role="alert" style="background-color: rgba(243, 231, 215, 1);margin-bottom:0px;border-radius:0">第${sendCard.join(
+          const card=sendCard.map(ele=>`<p>第${ele}张牌:${cards[ele-1]}</p>`)
+          return createHtml(` <div class="alert alert alert-info" role="alert" style="position:relative;background-color: rgba(243, 231, 215, 1);margin-bottom:0px;border-radius:0;cursor: pointer">
+          <img style="position:absolute;right:10px;width:30px;height:30px;" src="./assets/other/open.png"> 
+          第${sendCard.join(
             ","
-          )}张牌发给了${element.name}</div>`;
+          )}张牌发给了${element.name}
+          </div>`,`<p>玩家无法单独解开加密数据,因此看不到底牌</p>${card.join("")}`,index);
         case "watch":
           var extra = JSON.parse(element.args).map((item, key) => {
-             var nameKey = item.keys.map((ele)=>{
-                return`${ele.name}:${ele.key} </br>`
-              })
-            return `<div> 牌${item.index}的keys:<div> ${nameKey.join("")}</div></div></br> `;
+            var nameKey = item.keys.map(ele => {
+              return `${ele.name}:${ele.key} </br>`;
+            });
+            return `<div> 牌${item.index + 1}的keys:<div> ${nameKey.join(
+              ""
+            )}</div></div></br> `;
           });
-          return createHtml(`<div class="alert alert-info" role="alert" style="background-color: rgba(236, 244, 215, 1);margin-bottom:0px;border-radius:0;">
+          extra.unshift(`<p>其他玩家把持有的${element.name}的底牌的密钥公开,${element.name}解开加密数据,看到底牌,但是其他玩家和服务器仍看不到,因为${element.name}没有把自己的密钥公开</p>`)
+          return createHtml(
+            `<div class="alert alert-info" role="alert" style=" background-color: rgba(236, 244, 215, 1);cursor: pointer;margin-bottom:0px;border-radius:0;position:relative">
+            <img style="position:absolute;right:10px;width:30px;height:30px;" src="./assets/other/open.png"> 
+
           ${element.name}查看了自己的底牌
-     </div>`,extra.join(""),index)
+     </div>`,
+            extra.join(""),
+            index
+          );
         case "stake":
           const money = JSON.parse(element.args).num;
           return `<div class="alert alert-dark" role="alert" style="background-color: rgba(215, 233, 244, 1);margin-bottom:0px;border-radius:0;">
                      ${element.name}跟注${money}
                 </div>`;
         case "pass":
-          return `<div class="alert alert-danger" role="alert" style="background-color: rgba(216, 244, 216, 1)">
-                     ${element.name}弃牌
-                </div>`;
+          return createHtml(`<div class="alert alert-danger" role="alert" style="position:relative;cursor: pointer;background-color: rgba(216, 244, 216, 1)">
+          <img style="position:absolute;right:10px;width:30px;height:30px;" src="./assets/other/open.png"> 
+          ${element.name}弃牌
+     </div>`,`<p>弃牌时公开自己持有的其他玩家的密钥,但自己的密钥依然不公开,其他玩家和服务器均看不到${element.name}的底牌</p>`,index) ;
         case "open":
-      
           const openArgs = JSON.parse(element.args);
-          return `<div class="alert alert-warning" role="alert" style="background-color: rgba(215, 243, 239, 1)">
-                     ${element.name}与${openArgs.target}比牌,支付${
-            openArgs.cost
-          },${openArgs.winner}赢
-                </div>`;
-          case "result":
-          const resulTargs=JSON.parse(element.args)
-          const resultCard = []
-          return createHtml( `<div class="alert alert-success" role="alert" style="background-color: #D7DCF3">
+          return createHtml(`<div class="alert alert-warning" role="alert" style="background-color: rgba(215, 243, 239, 1);position:relative;">
+          <img style="position:absolute;right:10px;width:30px;height:30px;" src="./assets/other/open.png"> 
+          ${element.name}与${openArgs.target}比牌,支付${
+ openArgs.cost
+},${openArgs.winner}赢
+     </div>`,`<p>所有玩家公开持有的${element.name}和${openArgs.target}的密钥,底牌公开后,进行牌值比较</p>`,index) ;
+        case "result":
+          const resulTargs = JSON.parse(element.args);
+          const resultCard = [];
+          return createHtml(
+            `<div class="alert alert-success" role="alert" style="background-color: #D7DCF3;cursor: pointer;position:relative;">
+            <img style="position:absolute;right:10px;width:30px;height:30px;" src="./assets/other/open.png"> 
           ${element.name}赢牌,收:${resulTargs.money}
-     </div>`,`<div id="winCard">${resultCard.join("")}</div>` ,index);
+     </div>`,
+            `<div id="winCard">${resultCard.join("")}</div>`,
+            index
+          );
         default:
           return null;
       }
@@ -1929,24 +1953,26 @@ $(document).ready(function() {
     ]
   ];
   const BaseCardMap = BaseCard.map(card => Buffer.from(card));
-  function Decrypt(shuffer_cards, game_result,showNUm) {
+  function Decrypt(shuffer_cards, game_result, showNUm) {
+    console.log(shuffer_cards);
+    console.log(game_result);
     try {
-      var jsonShufferCards = JSON.parse(shuffer_cards);
-      var jsonJGameResult = JSON.parse(game_result);
+      var jsonShufferCards = shuffer_cards;
+      var jsonJGameResult = game_result;
       var ShufferArray = jsonShufferCards.map((item, index) => {
         return Buffer.from(bs58.decode(item));
       });
       var result;
+      console.log("jsonJGameResult", jsonJGameResult);
       jsonJGameResult.map((item, index) => {
         if (item.type == "result") {
           result = JSON.parse(item.args).cards;
         }
       });
-    
+      console.log(result);
       result.forEach(user_cards_prikeys => {
         var card_ids = [];
         user_cards_prikeys.cards.forEach(card_prikeys => {
-        
           var privateKeys = [];
           card_prikeys.keys.forEach(key_data => {
             privateKeys.push(Buffer.from(bs58.decode(key_data.key)));
@@ -1963,24 +1989,28 @@ $(document).ready(function() {
         });
         var whoseCard = user_cards_prikeys.name;
         var cards = showCard(card_ids);
-        result.forEach(((v,k)=>{
-          if(v.name==whoseCard){
-             result[k].cards.forEach((value,key)=>{
-              result[k].cards[key].img=cards[key]
-              })
+        result.forEach((v, k) => {
+          if (v.name == whoseCard) {
+            result[k].cards.forEach((value, key) => {
+              result[k].cards[key].img = cards[key];
+            });
           }
-        }))
-        const resultCard = result.map(payler=>{
-          const playerCard = payler.cards.map(item=>{
-            const evevyKey = item.keys.map(ele=>{
-               return `${ele.key}</br> `
-             })
-             return `<div class="showCardKeyContainer"><div>${item.img}</div> ${evevyKey.join("")}</div>` 
-           })
-           return `<div><p>${payler.name}</p> </br> ${playerCard.join("")}</div>` 
-         })
+        });
+        const resultCard = result.map(payler => {
+          const playerCard = payler.cards.map(item => {
+            const evevyKey = item.keys.map(ele => {
+              return `${ele.key}</br> `;
+            });
+            return `<div class="showCardKeyContainer"><div>${
+              item.img
+            }</div> ${evevyKey.join("")}</div>`;
+          });
+          return `<div><p>${payler.name}</p> </br> ${playerCard.join(
+            ""
+          )}</div>`;
+        });
 
-        $("#winCard").html(resultCard.join(""))
+        $("#winCard").html(resultCard.join(""));
         $(".footer").append(`<div>
             <h5>${whoseCard}的牌</h5>
             ${cards.join("")}
@@ -1990,32 +2020,17 @@ $(document).ready(function() {
       console.log(err);
     }
   }
-  function showCardNum(acceptCard){
-    const card = acceptCard.map((item, index) => {
-      if (item < 13) {
-        return `<img src="./assets/black/poker_S_S_${item + 1}.png" alt=""/> `;
-      } else if (item >= 13 && item < 26) {
-        return `<img src="./assets/red/poker_S_H_${item - 12}.png" alt=""/> `;
-      } else if (item >= 26 && item < 39) {
-        return `<img src="./assets/blossom/poker_S_C_${item -
-          26}.png" alt=""/> `;
-      } else {
-        return `<img src="./assets/block/poker_S_D_${item - 39}.png" alt=""/> `;
-      }
-    });
-    return card;
-  }
   function showCard(acceptCard) {
     const card = acceptCard.map((item, index) => {
       if (item < 13) {
-        return `<img src="./assets/black/poker_S_S_${item + 1}.png" alt=""/> `;
+        return `<img src="./assets/black/card_2_${Number(item)+1}.png" alt=""/> `;
       } else if (item >= 13 && item < 26) {
-        return `<img src="./assets/red/poker_S_H_${item - 12}.png" alt=""/> `;
+        return `<img src="./assets/red/card_3_${Number(item)-12}.png" alt=""/> `;
       } else if (item >= 26 && item < 39) {
-        return `<img src="./assets/blossom/poker_S_C_${item -
-          26}.png" alt=""/> `;
+        console.log(item);
+        return `<img src="./assets/blossom/card_4_${Number(item)-25}.png" alt=""/> `;
       } else {
-        return `<img src="./assets/block/poker_S_D_${item - 39}.png" alt=""/> `;
+        return `<img src="./assets/block/card_1_${Number(item)-38}.png" alt=""/> `;
       }
     });
     return card;

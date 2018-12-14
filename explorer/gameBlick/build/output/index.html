@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+        crossorigin="anonymous">
+    <link rel="stylesheet" href="./myPagination.b6e14642.css">
+    <title>GameBank</title>
+    <style>
+        body {
+            padding-bottom: 50px;
+        }
+        .table td, .table th{
+            border:0 !important;
+        }
+        thead {
+            background-color: rgba(117, 167, 234, 1);
+            color: #fff;
+        }
+      
+        [scope=row]{
+            color: #3434DA
+        }
+        table {
+            border:0;
+        }
+        tbody tr:nth-of-type(odd){
+            background-color: #fff;
+        }
+        tbody tr:nth-of-type(even){
+            background-color: rgba(241, 241, 241, 241);
+        }
+        .table tbody tr:hover{
+            background-color: #c9daff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">房间创建者</th>
+                    <th scope="col">房间ID</th>
+                    <th scope="col">区块高度</th>
+                    <th scope="col">玩家</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div id="pagination" class="pagination"></div>
+    </div>
+    <script src="./fetch.e4ea327b.js"></script>
+    <script src="./myPagination.js"></script>
+    <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.bootcss.com/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.bootcss.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+    <script>
+        $(document).ready(function () {
+            var Global = {
+                page: 0
+            }
+            //请求数据;
+            function getData({
+                page = 0,
+                sort = 1
+            }) {
+                getRequest(`contractlog/find/threecard025/table_create/${page}?sort=_id&order=-1`)
+                    .then(res => {
+                        const htmlArray = res.map((item, index) => {
+                            return ` <tr onClick="window.open('./detail.html?id=${item.col2}')">
+            <th scope="row">${index+1}</th>
+            <td >${item.col1}</td>
+            <td >${item.col2}</td>
+            <td>${item.block_number}</td>
+            <td>${item.col4}</td>
+        </tr>`
+                        })
+                        $("tbody").html(htmlArray.join(""))
+                    })
+            }
+            //请求总页数
+            TotalPage()
+
+            function TotalPage() {
+                getRequest(`contractlog/count/threecard025/table_create`)
+                    .then(res => {
+                        if (res % 50 != 0) {
+                            Global.page = parseInt(res / 50) + 1
+                        } else {
+                            Global.page = res % 50
+                        }
+                        new Page({
+                            id: 'pagination',
+                            pageTotal: Global.page, //必填,总页数
+                            pageAmount: 50, //每页多少条
+                            dataTotal: res, //总共多少条数据
+                            curPage: 1, //初始页码,不填默认为1
+                            pageSize: 5, //分页个数,不填默认为5
+                            showPageTotalFlag: true, //是否显示数据统计,不填默认不显示
+                            showSkipInputFlag: false, //是否支持跳转,不填默认不显示
+                            getPage: function (page) {
+                                getData({
+                                    page: page - 1,
+                                    sort: 1
+                                })
+                            }
+                        })
+                    })
+            }
+
+            getData({
+                page: 0,
+                sort: 1
+            })
+
+        });
+    </script>
+</body>
+
+</html>
